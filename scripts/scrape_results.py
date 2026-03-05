@@ -1,0 +1,84 @@
+import requests
+from bs4 import BeautifulSoup
+import json
+import os
+
+URL = "https://www.loto.ro"
+DATA_FILE = "next-loto-app/public/data/results.json"
+
+def get_results():
+    response = requests.get(URL, headers={'User-Agent': 'Mozilla/5.0'})
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    loto_649_draws = []
+    joker_draws = []
+
+    # We scrape all tables, find the ones matching 6/49 or Joker headers
+    tables = soup.find_all('table')
+    for table in tables:
+        rows = table.find_all('tr')
+        if len(rows) < 2: continue
+
+        header = [col.text.strip() for col in rows[0].find_all(['th', 'td'])]
+        data = [col.text.strip() for col in rows[1].find_all(['th', 'td'])]
+
+        if header == ['1', '2', '3', '4', '5', '6']:
+            loto_649_draws.append(data)
+        elif header == ['1', '2', '3', '4', '5', 'N JOCKER']:
+            joker_draws.append(data)
+
+    # Also find extraction dates to associate with the draws.
+    # From previous scraping, "DATA EXTRAGERII" is a header.
+    dates = []
+    for table in tables:
+        rows = table.find_all('tr')
+        if len(rows) < 2: continue
+        header = [col.text.strip() for col in rows[0].find_all(['th', 'td'])]
+        data = [col.text.strip() for col in rows[1].find_all(['th', 'td'])]
+        if header == ['DATA EXTRAGERII'] and len(data) > 0:
+            dates.append(data[0])
+
+    # We assume the first date corresponds to the latest draws for both 6/49 and Joker
+    # (they are extracted on the same day usually)
+    latest_date = dates[0] if dates else "Unknown Date"
+
+    # Format data
+    latest_649 = {
+        "date": latest_date,
+        "numbers": [int(x) for x in loto_649_draws[0]] if len(loto_649_draws) > 0 else []
+    }
+
+    latest_joker = {
+        "date": latest_date,
+        "numbers": [int(x) for x in joker_draws[0][:5]] if len(joker_draws) > 0 else [],
+        "joker": int(joker_draws[0][5]) if len(joker_draws) > 0 else None
+    }
+
+    # Load existing data
+    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
+    existing_data = {"loto649": [], "joker": []}
+    if os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, 'r') as f:
+                existing_data = json.load(f)
+        except Exception:
+            pass
+
+    # Check for duplicates by date
+    if latest_649["numbers"] and (not existing_data["loto649"] or existing_data["loto649"][0]["date"] != latest_date):
+        existing_data["loto649"].insert(0, latest_649)
+
+    if latest_joker["numbers"] and (not existing_data["joker"] or existing_data["joker"][0]["date"] != latest_date):
+        existing_data["joker"].insert(0, latest_joker)
+
+    # Keep only last 100 draws for performance
+    existing_data["loto649"] = existing_data["loto649"][:100]
+    existing_data["joker"] = existing_data["joker"][:100]
+
+    with open(DATA_FILE, 'w') as f:
+        json.dump(existing_data, f, indent=2)
+
+    print(f"Updated data successfully. Latest date: {latest_date}")
+
+if __name__ == "__main__":
+    get_results()
