@@ -23,7 +23,7 @@ export default function Home() {
   const [generated, setGenerated] = useState<DrawData[]>([]);
 
   useEffect(() => {
-    fetch("data/results.json")
+    fetch((process.env.NODE_ENV === "production" ? "/loto" : "") + "/data/results.json")
       .then((res) => res.json())
       .then((d: LotoData) => setData(d))
       .catch((e) => console.error("Error loading data:", e));
@@ -128,6 +128,12 @@ export default function Home() {
     return { numbers: nums, joker: jkr, date: "Generated" };
   };
 
+  useEffect(() => {
+    if (data && generated.length === 0) {
+      handleGenerate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
   const handleGenerate = () => {
     const res: DrawData[] = [];
     for (let i = 0; i < numTickets; i++) {
@@ -136,6 +142,26 @@ export default function Home() {
     }
     setGenerated(res);
   };
+
+  const checkWin = (ticket: DrawData, draws: DrawData[]) => {
+    let bestMatch = { matched: 0, joker: false, date: "" };
+
+    draws.forEach(draw => {
+      let matched = 0;
+      ticket.numbers.forEach(n => {
+        if (draw.numbers.includes(n)) matched++;
+      });
+      const jokerMatch = ticket.joker !== undefined && ticket.joker === draw.joker;
+
+      // Update best match logic
+      if (matched > bestMatch.matched || (matched === bestMatch.matched && jokerMatch && !bestMatch.joker)) {
+        bestMatch = { matched, joker: jokerMatch, date: draw.date };
+      }
+    });
+
+    return bestMatch;
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
@@ -151,36 +177,50 @@ export default function Home() {
 
         {/* Latest Results */}
         <section className="bg-white rounded-xl shadow-sm p-6 mb-8 border border-gray-100">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4 text-center">Latest Official Results</h2>
-          <div className="flex flex-col md:flex-row gap-8 justify-center items-center">
-            {data?.loto649?.[0] && (
-              <div className="text-center">
-                <h3 className="text-md font-medium text-gray-500 mb-3">Loto 6/49 - {data.loto649[0].date}</h3>
-                <div className="flex gap-2 justify-center">
-                  {data.loto649[0].numbers.map((n, i) => (
-                    <div key={i} className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold shadow-inner">
-                      {n}
+          <h2 className="text-xl font-semibold text-gray-800 mb-4 text-center">Previous 5 Wins</h2>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col md:flex-row gap-8 justify-center">
+              {/* Loto 6/49 */}
+              <div className="flex-1 text-center">
+                <h3 className="text-lg font-semibold text-blue-900 mb-4 border-b pb-2">Loto 6/49</h3>
+                <div className="space-y-4">
+                  {data?.loto649?.slice(0, 5).map((draw, idx) => (
+                    <div key={idx} className="flex flex-col items-center">
+                      <span className="text-sm font-medium text-gray-500 mb-1">{draw.date}</span>
+                      <div className="flex gap-2 justify-center">
+                        {draw.numbers.map((n, i) => (
+                          <div key={i} className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold shadow-inner text-sm md:text-base">
+                            {n}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
-            )}
 
-            {data?.joker?.[0] && (
-              <div className="text-center mt-6 md:mt-0 md:border-l md:border-gray-200 md:pl-8">
-                <h3 className="text-md font-medium text-gray-500 mb-3">Joker - {data.joker[0].date}</h3>
-                <div className="flex gap-2 justify-center">
-                  {data.joker[0].numbers.map((n, i) => (
-                    <div key={i} className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold shadow-inner">
-                      {n}
+              {/* Joker */}
+              <div className="flex-1 text-center mt-6 md:mt-0 md:border-l md:border-gray-200 md:pl-8">
+                <h3 className="text-lg font-semibold text-red-600 mb-4 border-b pb-2">Joker</h3>
+                <div className="space-y-4">
+                  {data?.joker?.slice(0, 5).map((draw, idx) => (
+                    <div key={idx} className="flex flex-col items-center">
+                      <span className="text-sm font-medium text-gray-500 mb-1">{draw.date}</span>
+                      <div className="flex gap-2 justify-center">
+                        {draw.numbers.map((n, i) => (
+                          <div key={i} className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold shadow-inner text-sm md:text-base">
+                            {n}
+                          </div>
+                        ))}
+                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-500 text-white flex items-center justify-center font-bold shadow-inner text-sm md:text-base">
+                          {draw.joker}
+                        </div>
+                      </div>
                     </div>
                   ))}
-                  <div className="w-10 h-10 rounded-full bg-red-500 text-white flex items-center justify-center font-bold shadow-inner">
-                    {data.joker[0].joker}
-                  </div>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         </section>
 
@@ -239,23 +279,38 @@ export default function Home() {
           {generated.length > 0 && (
             <div className="mt-8 space-y-4">
               <h3 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">Your Lucky Tickets</h3>
-              {generated.map((ticket, idx) => (
-                <div key={idx} className="flex items-center gap-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <span className="text-gray-500 font-medium w-20">Ticket {idx + 1}</span>
-                  <div className="flex gap-2">
-                    {ticket.numbers.sort((a,b) => a-b).map((n, i) => (
-                      <div key={i} className={`w-10 h-10 rounded-full text-white flex items-center justify-center font-bold shadow-sm ${game === '649' ? 'bg-blue-400' : 'bg-blue-400'}`}>
-                        {n}
-                      </div>
-                    ))}
-                    {ticket.joker !== undefined && (
-                      <div className="w-10 h-10 rounded-full bg-red-400 text-white flex items-center justify-center font-bold shadow-sm">
-                        {ticket.joker}
+              {generated.map((ticket, idx) => {
+                const drawsToCheck = game === "649" ? data?.loto649?.slice(0, 5) : data?.joker?.slice(0, 5);
+                const winStatus = drawsToCheck ? checkWin(ticket, drawsToCheck) : { matched: 0, joker: false, date: "" };
+                const isWin = game === "649" ? winStatus.matched >= 3 : (winStatus.matched >= 1 && winStatus.joker) || winStatus.matched >= 3;
+
+                return (
+                  <div key={idx} className={`flex flex-col md:flex-row items-center gap-6 p-4 rounded-lg border ${isWin ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                    <span className="text-gray-500 font-medium w-20">Ticket {idx + 1}</span>
+                    <div className="flex gap-2">
+                      {ticket.numbers.sort((a,b) => a-b).map((n, i) => {
+                        const isMatched = drawsToCheck?.some(d => d.date === winStatus.date && d.numbers.includes(n));
+                        return (
+                          <div key={i} className={`w-8 h-8 md:w-10 md:h-10 rounded-full text-white flex items-center justify-center font-bold shadow-sm ${isMatched && isWin ? 'bg-green-500 ring-2 ring-green-300' : 'bg-blue-400'}`}>
+                            {n}
+                          </div>
+                        );
+                      })}
+                      {ticket.joker !== undefined && (
+                        <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full text-white flex items-center justify-center font-bold shadow-sm ${winStatus.joker && isWin ? 'bg-green-500 ring-2 ring-green-300' : 'bg-red-400'}`}>
+                          {ticket.joker}
+                        </div>
+                      )}
+                    </div>
+                    {isWin && (
+                      <div className="ml-auto flex flex-col items-end text-sm">
+                        <span className="text-green-600 font-bold bg-green-100 px-3 py-1 rounded-full">Winner! 🎉</span>
+                        <span className="text-green-700 mt-1">Matched {winStatus.matched} {winStatus.joker ? "+ Joker" : ""} (Draw: {winStatus.date})</span>
                       </div>
                     )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
