@@ -1,6 +1,10 @@
 name: Fetch Loto Results and Deploy
 
 on:
+  push:
+    branches:
+      - main
+      - bench
   schedule:
     # Run at 21:00 UTC on Thursdays and Sundays
     - cron: '0 21 * * 4,0'
@@ -45,7 +49,7 @@ jobs:
           # Only commit if there are changes
           git diff --staged --quiet || git commit -m "chore: update latest loto results"
           git remote update
-          git rebase origin/main || true
+          git rebase origin/${GITHUB_REF##*/} || true
           git push origin HEAD || true # To avoid bash restriction
 
   build-and-deploy:
@@ -54,6 +58,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
