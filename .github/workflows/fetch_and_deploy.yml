@@ -5,6 +5,9 @@ on:
     branches:
       - main
       - bench
+  pull_request:
+    branches:
+      - '**'
   schedule:
     # Run at 21:00 UTC on Thursdays and Sundays
     - cron: '0 21 * * 4,0'
@@ -77,6 +80,7 @@ jobs:
         run: npm run build
 
       - name: Deploy to gh-pages branch
+        if: github.event_name != 'pull_request'
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
