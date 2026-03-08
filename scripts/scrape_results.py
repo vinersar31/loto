@@ -6,9 +6,8 @@ import os
 URL = "https://www.loto.ro"
 DATA_FILE = "next-loto-app/public/data/results.json"
 
-def get_results():
-    response = requests.get(URL, headers={'User-Agent': 'Mozilla/5.0'})
-    soup = BeautifulSoup(response.text, 'html.parser')
+def fetch_and_parse_results(html_content):
+    soup = BeautifulSoup(html_content, 'html.parser')
 
     loto_649_draws = []
     joker_draws = []
@@ -54,12 +53,15 @@ def get_results():
         "joker": int(joker_draws[0][5]) if len(joker_draws) > 0 else None
     }
 
+    return latest_date, latest_649, latest_joker
+
+def update_results_file(latest_date, latest_649, latest_joker, data_file=DATA_FILE):
     # Load existing data
-    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
+    os.makedirs(os.path.dirname(data_file), exist_ok=True)
     existing_data = {"loto649": [], "joker": []}
-    if os.path.exists(DATA_FILE):
+    if os.path.exists(data_file):
         try:
-            with open(DATA_FILE, 'r') as f:
+            with open(data_file, 'r') as f:
                 existing_data = json.load(f)
         except Exception:
             pass
@@ -75,9 +77,13 @@ def get_results():
     existing_data["loto649"] = existing_data["loto649"][:100]
     existing_data["joker"] = existing_data["joker"][:100]
 
-    with open(DATA_FILE, 'w') as f:
+    with open(data_file, 'w') as f:
         json.dump(existing_data, f, indent=2)
 
+def get_results():
+    response = requests.get(URL, headers={'User-Agent': 'Mozilla/5.0'})
+    latest_date, latest_649, latest_joker = fetch_and_parse_results(response.text)
+    update_results_file(latest_date, latest_649, latest_joker)
     print(f"Updated data successfully. Latest date: {latest_date}")
 
 if __name__ == "__main__":
