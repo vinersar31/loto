@@ -12,11 +12,14 @@ def fetch_and_parse_results(html_content):
     loto_649_draws = []
     joker_draws = []
 
-    # We scrape all tables, find the ones matching 6/49 or Joker headers
+    # We scrape all tables, find the ones matching 6/49, Joker headers, or Extraction Date
     tables = soup.find_all('table')
+    dates = []
+
     for table in tables:
         rows = table.find_all('tr')
-        if len(rows) < 2: continue
+        if len(rows) < 2:
+            continue
 
         header = [col.text.strip() for col in rows[0].find_all(['th', 'td'])]
         data = [col.text.strip() for col in rows[1].find_all(['th', 'td'])]
@@ -25,16 +28,7 @@ def fetch_and_parse_results(html_content):
             loto_649_draws.append(data)
         elif header == ['1', '2', '3', '4', '5', 'N JOCKER']:
             joker_draws.append(data)
-
-    # Also find extraction dates to associate with the draws.
-    # From previous scraping, "DATA EXTRAGERII" is a header.
-    dates = []
-    for table in tables:
-        rows = table.find_all('tr')
-        if len(rows) < 2: continue
-        header = [col.text.strip() for col in rows[0].find_all(['th', 'td'])]
-        data = [col.text.strip() for col in rows[1].find_all(['th', 'td'])]
-        if header == ['DATA EXTRAGERII'] and len(data) > 0:
+        elif header == ['DATA EXTRAGERII'] and len(data) > 0:
             dates.append(data[0])
 
     # We assume the first date corresponds to the latest draws for both 6/49 and Joker
