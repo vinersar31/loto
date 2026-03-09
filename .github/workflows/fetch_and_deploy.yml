@@ -22,6 +22,8 @@ concurrency:
 jobs:
   scrape-and-update:
     runs-on: ubuntu-latest
+    outputs:
+      commit_hash: ${{ steps.commit.outputs.commit_hash }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -42,6 +44,7 @@ jobs:
         run: python scripts/scrape_results.py
 
       - name: Commit and Push changes
+        id: commit
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
@@ -51,15 +54,22 @@ jobs:
           git remote update
           git rebase origin/${GITHUB_REF##*/} || true
           git push origin HEAD || true # To avoid bash restriction
+          echo "commit_hash=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   build-and-deploy:
     needs: scrape-and-update
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref }}
+          ref: ${{ needs.scrape-and-update.outputs.commit_hash || github.ref }}
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -76,10 +86,11 @@ jobs:
         working-directory: ./next-loto-app
         run: npm run build
 
-      - name: Deploy to gh-pages branch
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./next-loto-app/out
-          publish_branch: gh-pages
-          commit_message: "deploy: updates to gh-pages branch"
+          path: ./next-loto-app/out
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
