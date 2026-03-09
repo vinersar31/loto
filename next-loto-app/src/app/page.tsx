@@ -23,7 +23,7 @@ export default function Home() {
   const [generated, setGenerated] = useState<DrawData[]>([]);
 
   useEffect(() => {
-    fetch((process.env.NODE_ENV === "production" ? "/loto" : "") + "/data/results.json")
+    fetch((process.env.NODE_ENV === "production" ? "/loto" : "") + "/data/results.json?t=" + new Date().getTime())
       .then((res) => res.json())
       .then((d: LotoData) => setData(d))
       .catch((e) => console.error("Error loading data:", e));
