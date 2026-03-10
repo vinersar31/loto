@@ -22,6 +22,20 @@ export default function Home() {
   const [numTickets, setNumTickets] = useState<number>(1);
   const [generated, setGenerated] = useState<DrawData[]>([]);
 
+
+  const padNum = (num: number) => num.toString().padStart(2, '0');
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr || dateStr === "Generated") return dateStr;
+    const parts = dateStr.split("-");
+    if (parts.length === 3) {
+      const [day, month, year] = parts;
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    }
+    return dateStr;
+  };
+
+
   useEffect(() => {
     fetch((process.env.NODE_ENV === "production" ? "/loto" : "") + "/data/results.json?t=" + new Date().getTime())
       .then((res) => res.json())
@@ -186,12 +200,10 @@ export default function Home() {
                 <div className="space-y-4">
                   {data?.loto649?.slice(0, 5).map((draw, idx) => (
                     <div key={idx} className="flex flex-col items-center">
-                      <span className="text-sm font-medium text-gray-500 mb-1">{draw.date}</span>
+                      <span className="text-sm font-medium text-gray-500 mb-1">{formatDate(draw.date)}</span>
                       <div className="flex gap-2 justify-center">
                         {draw.numbers.map((n, i) => (
-                          <div key={i} className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold shadow-inner text-sm md:text-base">
-                            {n}
-                          </div>
+                          <div key={i} className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold shadow-inner text-sm md:text-base">{padNum(n)}</div>
                         ))}
                       </div>
                     </div>
@@ -205,15 +217,14 @@ export default function Home() {
                 <div className="space-y-4">
                   {data?.joker?.slice(0, 5).map((draw, idx) => (
                     <div key={idx} className="flex flex-col items-center">
-                      <span className="text-sm font-medium text-gray-500 mb-1">{draw.date}</span>
+                      <span className="text-sm font-medium text-gray-500 mb-1">{formatDate(draw.date)}</span>
                       <div className="flex gap-2 justify-center">
                         {draw.numbers.map((n, i) => (
-                          <div key={i} className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold shadow-inner text-sm md:text-base">
-                            {n}
-                          </div>
+                          <div key={i} className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold shadow-inner text-sm md:text-base">{padNum(n)}</div>
                         ))}
+                        <div className="text-gray-400 font-bold self-center px-1">+</div>
                         <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-500 text-white flex items-center justify-center font-bold shadow-inner text-sm md:text-base">
-                          {draw.joker}
+                          {draw.joker !== undefined ? padNum(draw.joker) : ""}
                         </div>
                       </div>
                     </div>
@@ -291,21 +302,22 @@ export default function Home() {
                       {ticket.numbers.sort((a,b) => a-b).map((n, i) => {
                         const isMatched = drawsToCheck?.some(d => d.date === winStatus.date && d.numbers.includes(n));
                         return (
-                          <div key={i} className={`w-8 h-8 md:w-10 md:h-10 rounded-full text-white flex items-center justify-center font-bold shadow-sm ${isMatched && isWin ? 'bg-green-500 ring-2 ring-green-300' : 'bg-blue-400'}`}>
-                            {n}
-                          </div>
+                          <div key={i} className={`w-8 h-8 md:w-10 md:h-10 rounded-full text-white flex items-center justify-center font-bold shadow-sm ${isMatched && isWin ? 'bg-green-500 ring-2 ring-green-300' : 'bg-blue-400'}`}>{padNum(n)}</div>
                         );
                       })}
                       {ticket.joker !== undefined && (
-                        <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full text-white flex items-center justify-center font-bold shadow-sm ${winStatus.joker && isWin ? 'bg-green-500 ring-2 ring-green-300' : 'bg-red-400'}`}>
-                          {ticket.joker}
-                        </div>
+                        <>
+                          <div className="text-gray-400 font-bold self-center px-1">+</div>
+                          <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full text-white flex items-center justify-center font-bold shadow-sm ${winStatus.joker && isWin ? 'bg-green-500 ring-2 ring-green-300' : 'bg-red-400'}`}>
+                            {padNum(ticket.joker)}
+                          </div>
+                        </>
                       )}
                     </div>
                     {isWin && (
                       <div className="ml-auto flex flex-col items-end text-sm">
                         <span className="text-green-600 font-bold bg-green-100 px-3 py-1 rounded-full">Winner! 🎉</span>
-                        <span className="text-green-700 mt-1">Matched {winStatus.matched} {winStatus.joker ? "+ Joker" : ""} (Draw: {winStatus.date})</span>
+                        <span className="text-green-700 mt-1">Matched {winStatus.matched} {winStatus.joker ? "+ Joker" : ""} (Draw: {formatDate(winStatus.date)})</span>
                       </div>
                     )}
                   </div>
