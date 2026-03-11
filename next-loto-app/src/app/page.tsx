@@ -3,6 +3,31 @@
 import { useEffect, useState } from "react";
 import Head from "next/head";
 
+// Constants
+const LOTO_649_COUNT = 6;
+const LOTO_649_MAX = 49;
+const LOTO_649_WIN_THRESHOLD = 3;
+
+const JOKER_MAIN_COUNT = 5;
+const JOKER_MAIN_MAX = 45;
+const JOKER_NUM_COUNT = 1;
+const JOKER_NUM_MAX = 20;
+const JOKER_WIN_THRESHOLD_MAIN = 3;
+const JOKER_WIN_THRESHOLD_WITH_JOKER = 1;
+
+const STRATEGY_TOP_HOT = 15;
+const STRATEGY_TOP_BALANCED = 10;
+const STRATEGY_TOP_JOKER = 5;
+
+const STRATEGY_PROB_HOT = 0.33;
+const STRATEGY_PROB_COLD = 0.66;
+
+const BALANCED_HOT_COLD_COUNT = 2;
+
+const HISTORY_SLICE_LIMIT = 5;
+
+const MAX_TICKETS = 20;
+
 // Types
 type DrawData = {
   date: string;
@@ -74,21 +99,21 @@ export default function Home() {
   const generate649 = () => {
     const draws = data?.loto649 || [];
     if (strategy === "random" || draws.length === 0) {
-      return { numbers: pickRandom(6, 49), date: "Generated" };
+      return { numbers: pickRandom(LOTO_649_COUNT, LOTO_649_MAX), date: "Generated" };
     }
 
-    const freq = getFrequency(draws, false, 49);
+    const freq = getFrequency(draws, false, LOTO_649_MAX);
     let nums: number[] = [];
 
-    if (strategy === "hot") nums = pickFromList(6, freq, 15, 49);
-    else if (strategy === "cold") nums = pickFromList(6, [...freq].reverse(), 15, 49);
+    if (strategy === "hot") nums = pickFromList(LOTO_649_COUNT, freq, STRATEGY_TOP_HOT, LOTO_649_MAX);
+    else if (strategy === "cold") nums = pickFromList(LOTO_649_COUNT, [...freq].reverse(), STRATEGY_TOP_HOT, LOTO_649_MAX);
     else if (strategy === "balanced") {
-      const hots = pickFromList(2, freq, 10, 49);
-      const colds = pickFromList(2, [...freq].reverse(), 10, 49);
-      const rand = pickRandom(2, 49);
+      const hots = pickFromList(BALANCED_HOT_COLD_COUNT, freq, STRATEGY_TOP_BALANCED, LOTO_649_MAX);
+      const colds = pickFromList(BALANCED_HOT_COLD_COUNT, [...freq].reverse(), STRATEGY_TOP_BALANCED, LOTO_649_MAX);
+      const rand = pickRandom(LOTO_649_COUNT - 2 * BALANCED_HOT_COLD_COUNT, LOTO_649_MAX);
       const all = new Set([...hots, ...colds, ...rand]);
-      while (all.size < 6) all.add(Math.floor(Math.random() * 49) + 1);
-      nums = Array.from(all).slice(0, 6);
+      while (all.size < LOTO_649_COUNT) all.add(Math.floor(Math.random() * LOTO_649_MAX) + 1);
+      nums = Array.from(all).slice(0, LOTO_649_COUNT);
     }
 
     return { numbers: nums, date: "Generated" };
@@ -97,32 +122,32 @@ export default function Home() {
   const generateJoker = () => {
     const draws = data?.joker || [];
     if (strategy === "random" || draws.length === 0) {
-      return { numbers: pickRandom(5, 45), joker: pickRandom(1, 20)[0], date: "Generated" };
+      return { numbers: pickRandom(JOKER_MAIN_COUNT, JOKER_MAIN_MAX), joker: pickRandom(JOKER_NUM_COUNT, JOKER_NUM_MAX)[0], date: "Generated" };
     }
 
-    const freq = getFrequency(draws, false, 45);
-    const jokerFreq = getFrequency(draws, true, 20);
+    const freq = getFrequency(draws, false, JOKER_MAIN_MAX);
+    const jokerFreq = getFrequency(draws, true, JOKER_NUM_MAX);
     let nums: number[] = [];
     let jkr: number = 0;
 
     if (strategy === "hot") {
-      nums = pickFromList(5, freq, 15, 45);
-      jkr = pickFromList(1, jokerFreq, 5, 20)[0];
+      nums = pickFromList(JOKER_MAIN_COUNT, freq, STRATEGY_TOP_HOT, JOKER_MAIN_MAX);
+      jkr = pickFromList(JOKER_NUM_COUNT, jokerFreq, STRATEGY_TOP_JOKER, JOKER_NUM_MAX)[0];
     } else if (strategy === "cold") {
-      nums = pickFromList(5, [...freq].reverse(), 15, 45);
-      jkr = pickFromList(1, [...jokerFreq].reverse(), 5, 20)[0];
+      nums = pickFromList(JOKER_MAIN_COUNT, [...freq].reverse(), STRATEGY_TOP_HOT, JOKER_MAIN_MAX);
+      jkr = pickFromList(JOKER_NUM_COUNT, [...jokerFreq].reverse(), STRATEGY_TOP_JOKER, JOKER_NUM_MAX)[0];
     } else if (strategy === "balanced") {
-      const hots = pickFromList(2, freq, 10, 45);
-      const colds = pickFromList(2, [...freq].reverse(), 10, 45);
-      const rand = pickRandom(1, 45);
+      const hots = pickFromList(BALANCED_HOT_COLD_COUNT, freq, STRATEGY_TOP_BALANCED, JOKER_MAIN_MAX);
+      const colds = pickFromList(BALANCED_HOT_COLD_COUNT, [...freq].reverse(), STRATEGY_TOP_BALANCED, JOKER_MAIN_MAX);
+      const rand = pickRandom(JOKER_MAIN_COUNT - 2 * BALANCED_HOT_COLD_COUNT, JOKER_MAIN_MAX);
       const all = new Set([...hots, ...colds, ...rand]);
-      while (all.size < 5) all.add(Math.floor(Math.random() * 45) + 1);
-      nums = Array.from(all).slice(0, 5);
+      while (all.size < JOKER_MAIN_COUNT) all.add(Math.floor(Math.random() * JOKER_MAIN_MAX) + 1);
+      nums = Array.from(all).slice(0, JOKER_MAIN_COUNT);
 
       const type = Math.random();
-      if (type < 0.33) jkr = pickFromList(1, jokerFreq, 5, 20)[0];
-      else if (type < 0.66) jkr = pickFromList(1, [...jokerFreq].reverse(), 5, 20)[0];
-      else jkr = pickRandom(1, 20)[0];
+      if (type < STRATEGY_PROB_HOT) jkr = pickFromList(JOKER_NUM_COUNT, jokerFreq, STRATEGY_TOP_JOKER, JOKER_NUM_MAX)[0];
+      else if (type < STRATEGY_PROB_COLD) jkr = pickFromList(JOKER_NUM_COUNT, [...jokerFreq].reverse(), STRATEGY_TOP_JOKER, JOKER_NUM_MAX)[0];
+      else jkr = pickRandom(JOKER_NUM_COUNT, JOKER_NUM_MAX)[0];
     }
 
     return { numbers: nums, joker: jkr, date: "Generated" };
@@ -177,14 +202,14 @@ export default function Home() {
 
         {/* Latest Results */}
         <section className="bg-white rounded-xl shadow-sm p-6 mb-8 border border-gray-100">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4 text-center">Previous 5 Wins</h2>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4 text-center">Previous {HISTORY_SLICE_LIMIT} Wins</h2>
           <div className="flex flex-col gap-6">
             <div className="flex flex-col md:flex-row gap-8 justify-center">
               {/* Loto 6/49 */}
               <div className="flex-1 text-center">
                 <h3 className="text-lg font-semibold text-blue-900 mb-4 border-b pb-2">Loto 6/49</h3>
                 <div className="space-y-4">
-                  {data?.loto649?.slice(0, 5).map((draw, idx) => (
+                  {data?.loto649?.slice(0, HISTORY_SLICE_LIMIT).map((draw, idx) => (
                     <div key={idx} className="flex flex-col items-center">
                       <span className="text-sm font-medium text-gray-500 mb-1">{draw.date}</span>
                       <div className="flex gap-2 justify-center">
@@ -203,7 +228,7 @@ export default function Home() {
               <div className="flex-1 text-center mt-6 md:mt-0 md:border-l md:border-gray-200 md:pl-8">
                 <h3 className="text-lg font-semibold text-red-600 mb-4 border-b pb-2">Joker</h3>
                 <div className="space-y-4">
-                  {data?.joker?.slice(0, 5).map((draw, idx) => (
+                  {data?.joker?.slice(0, HISTORY_SLICE_LIMIT).map((draw, idx) => (
                     <div key={idx} className="flex flex-col items-center">
                       <span className="text-sm font-medium text-gray-500 mb-1">{draw.date}</span>
                       <div className="flex gap-2 justify-center">
@@ -260,7 +285,7 @@ export default function Home() {
               <label className="text-sm font-medium text-gray-600 mb-2">Number of Tickets</label>
               <input
                 type="number"
-                min="1" max="20"
+                min="1" max={MAX_TICKETS}
                 value={numTickets}
                 onChange={(e) => setNumTickets(parseInt(e.target.value) || 1)}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-32"
@@ -280,9 +305,11 @@ export default function Home() {
             <div className="mt-8 space-y-4">
               <h3 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">Your Lucky Tickets</h3>
               {generated.map((ticket, idx) => {
-                const drawsToCheck = game === "649" ? data?.loto649?.slice(0, 5) : data?.joker?.slice(0, 5);
+                const drawsToCheck = game === "649" ? data?.loto649?.slice(0, HISTORY_SLICE_LIMIT) : data?.joker?.slice(0, HISTORY_SLICE_LIMIT);
                 const winStatus = drawsToCheck ? checkWin(ticket, drawsToCheck) : { matched: 0, joker: false, date: "" };
-                const isWin = game === "649" ? winStatus.matched >= 3 : (winStatus.matched >= 1 && winStatus.joker) || winStatus.matched >= 3;
+                const isWin = game === "649"
+                  ? winStatus.matched >= LOTO_649_WIN_THRESHOLD
+                  : (winStatus.matched >= JOKER_WIN_THRESHOLD_WITH_JOKER && winStatus.joker) || winStatus.matched >= JOKER_WIN_THRESHOLD_MAIN;
 
                 return (
                   <div key={idx} className={`flex flex-col md:flex-row items-center gap-6 p-4 rounded-lg border ${isWin ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
