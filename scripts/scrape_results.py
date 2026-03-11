@@ -59,7 +59,7 @@ def update_results_file(latest_date, latest_649, latest_joker, data_file=DATA_FI
     existing_data = {"loto649": [], "joker": []}
     if os.path.exists(data_file):
         try:
-            with open(data_file, 'r') as f:
+            with open(data_file, 'r', encoding='utf-8') as f:
                 existing_data = json.load(f)
         except (json.JSONDecodeError, OSError) as e:
             logging.error(f"Error reading existing data from {data_file}: {e}. Starting fresh.")
@@ -75,7 +75,7 @@ def update_results_file(latest_date, latest_649, latest_joker, data_file=DATA_FI
     existing_data["loto649"] = existing_data["loto649"][:100]
     existing_data["joker"] = existing_data["joker"][:100]
 
-    with open(data_file, 'w') as f:
+    with open(data_file, 'w', encoding='utf-8') as f:
         json.dump(existing_data, f, indent=2)
 
 def get_results():
