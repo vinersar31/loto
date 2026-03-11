@@ -2,6 +2,10 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import os
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 URL = "https://www.loto.ro"
 DATA_FILE = "next-loto-app/public/data/results.json"
@@ -57,8 +61,8 @@ def update_results_file(latest_date, latest_649, latest_joker, data_file=DATA_FI
         try:
             with open(data_file, 'r') as f:
                 existing_data = json.load(f)
-        except Exception:
-            pass
+        except (json.JSONDecodeError, OSError) as e:
+            logging.error(f"Error reading existing data from {data_file}: {e}. Starting fresh.")
 
     # Check for duplicates by date
     if latest_649["numbers"] and (not existing_data["loto649"] or existing_data["loto649"][0]["date"] != latest_date):
