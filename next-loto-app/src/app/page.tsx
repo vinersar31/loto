@@ -10,6 +10,15 @@ type DrawData = {
   joker?: number;
 };
 
+
+type SimulationStats = {
+  totalDrawsSimulated: number;
+  totalTicketsGenerated: number;
+  wins: Record<string, number>;
+  totalCost: number;
+  estimatedWin: number;
+};
+
 type LotoData = {
   loto649: DrawData[];
   joker: DrawData[];
@@ -21,6 +30,9 @@ export default function Home() {
   const [strategy, setStrategy] = useState<string>("random");
   const [numTickets, setNumTickets] = useState<number>(1);
   const [generated, setGenerated] = useState<DrawData[]>([]);
+  const [simDrawsCount, setSimDrawsCount] = useState<number>(10);
+  const [simulationStats, setSimulationStats] = useState<SimulationStats | null>(null);
+
 
 
   const padNum = (num: number) => num.toString().padStart(2, '0');
@@ -85,8 +97,8 @@ export default function Home() {
     return Array.from(picked);
   };
 
-  const generate649 = () => {
-    const draws = data?.loto649 || [];
+  const generate649 = (customDraws?: DrawData[]) => {
+    const draws = customDraws || data?.loto649 || [];
     if (strategy === "random" || draws.length === 0) {
       return { numbers: pickRandom(6, 49), date: "Generated" };
     }
@@ -109,8 +121,8 @@ export default function Home() {
     return { numbers: nums, date: "Generated" };
   };
 
-  const generateJoker = () => {
-    const draws = data?.joker || [];
+  const generateJoker = (customDraws?: DrawData[]) => {
+    const draws = customDraws || data?.joker || [];
     if (strategy === "random" || draws.length === 0) {
       return { numbers: pickRandom(5, 45), joker: pickRandom(1, 20)[0], date: "Generated" };
     }
@@ -151,6 +163,72 @@ export default function Home() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
+
+  const runSimulation = () => {
+    if (!data) return;
+    const history = game === "649" ? data.loto649 : data.joker;
+
+    // We can't simulate if we don't have enough history
+    // We need at least some history BEFORE the draw we are simulating
+    const drawsToSimulate = Math.min(simDrawsCount, history.length - 1);
+    if (drawsToSimulate <= 0) return;
+
+    let totalCost = 0;
+    let estimatedWin = 0;
+    const wins: Record<string, number> = {};
+
+    // history[0] is newest. history[history.length-1] is oldest.
+    // To simulate draw T, we can only use draws from T+1 to end.
+    for (let t = drawsToSimulate - 1; t >= 0; t--) {
+      const actualDraw = history[t];
+      const availableHistory = history.slice(t + 1);
+
+      for (let i = 0; i < numTickets; i++) {
+        const ticket = game === "649" ? generate649(availableHistory) : generateJoker(availableHistory);
+        const match = checkWin(ticket, [actualDraw]); // check against the single actual draw
+
+        totalCost += game === "649" ? 7 : 6; // roughly 7 RON for 6/49, 6 for Joker
+
+        const isWin = game === "649"
+          ? match.matched >= 3
+          : (match.matched >= 1 && match.joker) || match.matched >= 3;
+
+        if (isWin) {
+          const winCategory = game === "649"
+            ? `${match.matched} numbers`
+            : `${match.matched} numbers ${match.joker ? '+ Joker' : ''}`;
+
+          wins[winCategory] = (wins[winCategory] || 0) + 1;
+
+          // Rough estimation of winnings (in RON)
+          if (game === "649") {
+            if (match.matched === 3) estimatedWin += 30;
+            if (match.matched === 4) estimatedWin += 200;
+            if (match.matched === 5) estimatedWin += 20000;
+            if (match.matched === 6) estimatedWin += 5000000;
+          } else {
+            if (match.matched === 1 && match.joker) estimatedWin += 15;
+            if (match.matched === 2 && match.joker) estimatedWin += 30;
+            if (match.matched === 3 && !match.joker) estimatedWin += 50;
+            if (match.matched === 3 && match.joker) estimatedWin += 500;
+            if (match.matched === 4 && !match.joker) estimatedWin += 2000;
+            if (match.matched === 4 && match.joker) estimatedWin += 20000;
+            if (match.matched === 5 && !match.joker) estimatedWin += 100000;
+            if (match.matched === 5 && match.joker) estimatedWin += 2000000;
+          }
+        }
+      }
+    }
+
+    setSimulationStats({
+      totalDrawsSimulated: drawsToSimulate,
+      totalTicketsGenerated: drawsToSimulate * numTickets,
+      wins,
+      totalCost,
+      estimatedWin
+    });
+  };
+
   const handleGenerate = () => {
     const res: DrawData[] = [];
     for (let i = 0; i < numTickets; i++) {
@@ -238,18 +316,83 @@ export default function Home() {
           </div>
         </section>
 
+
+        {/* Simulation Section */}
+        <section className="bg-white rounded-xl shadow-sm p-8 border border-gray-100 mb-8">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4 text-center">Backtest Simulation</h2>
+          <p className="text-center text-gray-600 mb-6 text-sm">
+            Simulate how your chosen strategy would have performed over the last N draws.
+            The algorithm only uses historical data available <b>before</b> each simulated draw.
+          </p>
+
+          <div className="flex flex-col md:flex-row gap-6 justify-center items-end mb-8">
+            <div className="flex flex-col w-full md:w-auto">
+              <label className="text-sm font-medium text-gray-600 mb-2">Past Draws to Simulate</label>
+              <input
+                type="number"
+                min="1" max="50"
+                value={simDrawsCount}
+                onChange={(e) => setSimDrawsCount(parseInt(e.target.value) || 10)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-32"
+              />
+            </div>
+
+            <button
+              onClick={runSimulation}
+              className="px-8 py-2 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg shadow-md transition-colors w-full md:w-auto h-[42px]"
+            >
+              Run Simulation
+            </button>
+          </div>
+
+          {simulationStats && (
+            <div className="bg-purple-50 p-6 rounded-lg border border-purple-100">
+              <h3 className="text-lg font-bold text-purple-900 mb-4 border-b border-purple-200 pb-2">Simulation Results</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-700"><span className="font-semibold">Strategy:</span> {strategy} ({game === "649" ? "Loto 6/49" : "Joker"})</p>
+                  <p className="text-gray-700"><span className="font-semibold">Draws Simulated:</span> {simulationStats.totalDrawsSimulated}</p>
+                  <p className="text-gray-700"><span className="font-semibold">Tickets Bought:</span> {simulationStats.totalTicketsGenerated} ({numTickets} per draw)</p>
+                  <p className="text-gray-700"><span className="font-semibold">Estimated Cost:</span> {simulationStats.totalCost} RON</p>
+                  <p className="text-gray-700"><span className="font-semibold">Estimated Winnings:</span> {simulationStats.estimatedWin} RON</p>
+                  <p className="mt-2 font-bold text-lg">
+                    Return on Investment:
+                    <span className={simulationStats.estimatedWin >= simulationStats.totalCost ? "text-green-600" : "text-red-600"}>
+                      {' '}{(simulationStats.estimatedWin - simulationStats.totalCost)} RON
+                    </span>
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-800 mb-2">Winning Tickets Generated:</p>
+                  {Object.keys(simulationStats.wins).length > 0 ? (
+                    <ul className="list-disc pl-5 space-y-1">
+                      {Object.entries(simulationStats.wins).map(([category, count]) => (
+                        <li key={category} className="text-gray-700">
+                          {category}: <span className="font-bold text-green-600">{count}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-gray-500 italic">No winning tickets generated in this simulation.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+
         {/* Generator Controls */}
         <section className="bg-white rounded-xl shadow-sm p-8 border border-gray-100 mb-8">
           <div className="flex justify-center gap-4 mb-8">
             <button
               className={`px-6 py-2 rounded-lg font-medium transition-colors ${game === "649" ? "bg-blue-600 text-white shadow-md" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-              onClick={() => { setGame("649"); setGenerated([]); }}
+              onClick={() => { setGame("649"); setGenerated([]); setSimulationStats(null); }}
             >
               Loto 6/49
             </button>
             <button
               className={`px-6 py-2 rounded-lg font-medium transition-colors ${game === "joker" ? "bg-red-500 text-white shadow-md" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-              onClick={() => { setGame("joker"); setGenerated([]); }}
+              onClick={() => { setGame("joker"); setGenerated([]); setSimulationStats(null); }}
             >
               Joker
             </button>
@@ -260,7 +403,7 @@ export default function Home() {
               <label className="text-sm font-medium text-gray-600 mb-2">Generation Strategy</label>
               <select
                 value={strategy}
-                onChange={(e) => setStrategy(e.target.value)}
+                onChange={(e) => { setStrategy(e.target.value); setSimulationStats(null); }}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               >
                 <option value="random">Pure Random</option>
