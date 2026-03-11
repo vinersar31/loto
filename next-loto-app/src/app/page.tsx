@@ -92,13 +92,14 @@ export default function Home() {
     }
 
     const freq = getFrequency(draws, false, 49);
+    const reversedFreq = (strategy === "cold" || strategy === "balanced") ? [...freq].reverse() : [];
     let nums: number[] = [];
 
     if (strategy === "hot") nums = pickFromList(6, freq, 15, 49);
-    else if (strategy === "cold") nums = pickFromList(6, [...freq].reverse(), 15, 49);
+    else if (strategy === "cold") nums = pickFromList(6, reversedFreq, 15, 49);
     else if (strategy === "balanced") {
       const hots = pickFromList(2, freq, 10, 49);
-      const colds = pickFromList(2, [...freq].reverse(), 10, 49);
+      const colds = pickFromList(2, reversedFreq, 10, 49);
       const rand = pickRandom(2, 49);
       const all = new Set([...hots, ...colds, ...rand]);
       while (all.size < 6) all.add(Math.floor(Math.random() * 49) + 1);
@@ -116,6 +117,8 @@ export default function Home() {
 
     const freq = getFrequency(draws, false, 45);
     const jokerFreq = getFrequency(draws, true, 20);
+    const reversedFreq = (strategy === "cold" || strategy === "balanced") ? [...freq].reverse() : [];
+    const reversedJokerFreq = (strategy === "cold" || strategy === "balanced") ? [...jokerFreq].reverse() : [];
     let nums: number[] = [];
     let jkr: number = 0;
 
@@ -123,11 +126,11 @@ export default function Home() {
       nums = pickFromList(5, freq, 15, 45);
       jkr = pickFromList(1, jokerFreq, 5, 20)[0];
     } else if (strategy === "cold") {
-      nums = pickFromList(5, [...freq].reverse(), 15, 45);
-      jkr = pickFromList(1, [...jokerFreq].reverse(), 5, 20)[0];
+      nums = pickFromList(5, reversedFreq, 15, 45);
+      jkr = pickFromList(1, reversedJokerFreq, 5, 20)[0];
     } else if (strategy === "balanced") {
       const hots = pickFromList(2, freq, 10, 45);
-      const colds = pickFromList(2, [...freq].reverse(), 10, 45);
+      const colds = pickFromList(2, reversedFreq, 10, 45);
       const rand = pickRandom(1, 45);
       const all = new Set([...hots, ...colds, ...rand]);
       while (all.size < 5) all.add(Math.floor(Math.random() * 45) + 1);
@@ -135,7 +138,7 @@ export default function Home() {
 
       const type = Math.random();
       if (type < 0.33) jkr = pickFromList(1, jokerFreq, 5, 20)[0];
-      else if (type < 0.66) jkr = pickFromList(1, [...jokerFreq].reverse(), 5, 20)[0];
+      else if (type < 0.66) jkr = pickFromList(1, reversedJokerFreq, 5, 20)[0];
       else jkr = pickRandom(1, 20)[0];
     }
 
