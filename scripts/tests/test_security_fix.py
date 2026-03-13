@@ -19,7 +19,7 @@ class TestScrapeResultsSecurity(unittest.TestCase):
     def test_update_results_file_invalid_json_logging(self):
         # Setup a temporary file with invalid JSON
         data_file = "./test_results.json"
-        with open(data_file, 'w') as f:
+        with open(data_file, 'w', encoding='utf-8') as f:
             f.write("invalid json content {")
 
         latest_date = "01-01-2023"
@@ -37,7 +37,7 @@ class TestScrapeResultsSecurity(unittest.TestCase):
             scrape_results.update_results_file(latest_date, latest_649, latest_joker, data_file=data_file)
 
             # Verify the file was overwritten correctly
-            with open(data_file, 'r') as f:
+            with open(data_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
             self.assertEqual(len(data["loto649"]), 1)

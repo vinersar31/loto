@@ -91,7 +91,7 @@ def test_update_results_file_new_data(tmp_path):
 
     assert data_file.exists()
 
-    with open(data_file, 'r') as f:
+    with open(data_file, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
     assert len(data["loto649"]) == 1
@@ -107,7 +107,7 @@ def test_update_results_file_duplicate_date(tmp_path):
         "loto649": [{"date": "01-01-2023", "numbers": [10, 20, 30, 40, 50, 60]}],
         "joker": [{"date": "01-01-2023", "numbers": [10, 20, 30, 40, 50], "joker": 10}]
     }
-    with open(data_file, 'w') as f:
+    with open(data_file, 'w', encoding='utf-8') as f:
         json.dump(existing_data, f)
 
     latest_date = "01-01-2023"
@@ -117,7 +117,7 @@ def test_update_results_file_duplicate_date(tmp_path):
     # Since date is same, it should NOT add the new ones, keeping existing
     scrape_results.update_results_file(latest_date, latest_649, latest_joker, data_file=str(data_file))
 
-    with open(data_file, 'r') as f:
+    with open(data_file, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
     assert len(data["loto649"]) == 1
@@ -127,7 +127,7 @@ def test_update_results_file_invalid_json(tmp_path):
     data_file = tmp_path / "results.json"
 
     # Write invalid json
-    with open(data_file, 'w') as f:
+    with open(data_file, 'w', encoding='utf-8') as f:
         f.write("invalid json content {")
 
     latest_date = "01-01-2023"
@@ -137,7 +137,7 @@ def test_update_results_file_invalid_json(tmp_path):
     # Should recover gracefully and overwrite
     scrape_results.update_results_file(latest_date, latest_649, latest_joker, data_file=str(data_file))
 
-    with open(data_file, 'r') as f:
+    with open(data_file, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
     assert len(data["loto649"]) == 1
