@@ -227,7 +227,7 @@ export default function Home() {
           </div>
 
           {simulationStats && (
-            <div className="bg-purple-50 p-6 rounded-lg border border-purple-100">
+            <div key={simulationStats.timestamp} className="animate-fade-in bg-purple-50 p-6 rounded-lg border border-purple-100">
               <h3 className="text-lg font-bold text-purple-900 mb-4 border-b border-purple-200 pb-2">Simulation Results</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>

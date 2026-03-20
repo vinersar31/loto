@@ -10,6 +10,7 @@ export type SimulationStats = {
   wins: Record<string, number>;
   totalCost: number;
   estimatedWin: number;
+  timestamp: number;
 };
 
 export type LotoData = {

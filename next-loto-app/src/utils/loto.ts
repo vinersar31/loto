@@ -227,6 +227,7 @@ export const calculateSimulation = (
     totalTicketsGenerated: drawsToSimulate * simNumTickets,
     wins,
     totalCost,
-    estimatedWin
+    estimatedWin,
+    timestamp: Date.now()
   };
 };
